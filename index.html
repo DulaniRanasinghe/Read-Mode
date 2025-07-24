@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reading Comprehension Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      line-height: 1.6;
+      background-color: #f0f0f0;
+      color: #000;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .dark-mode {
+      background-color: #121212;
+      color: #fff;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .dark-mode .container {
+      background: #1e1e1e;
+    }
+    .question {
+      margin: 10px 0;
+    }
+    button {
+      padding: 10px 15px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div id="content"></div>
+  <div id="thankYouMessage" style="display:none; max-width: 700px; margin-top: 20px; text-align: center; font-size: 16px;">
+    <h2>✅ Thank You for Participating!</h2>
+    <p>
+      You have completed the study. Your responses and timings have been saved in a CSV file downloaded to your device.
+    </p>
+    <p>
+      Please take a moment to share your experience by filling out our short feedback form:
+    </p>
+    <a href="https://forms.cloud.microsoft/e/qwnBV5eJz4?origin=lprLink target=_blank" style="font-size: 18px; color: #0066cc;">
+      👉 Fill Out the Feedback Form
+    </a>
+    <p><strong>Don't forget to attach your CSV file when submitting the form.</strong></p>
+  </div>
+</div>
+
+<script>
+const passages = [
+  {
+    id: "A",
+    text: "The Amazon Rainforest, often referred to as the planet's lungs, produces 20% of the world's oxygen. It spans over 5.5 million square kilometers across nine countries. The rainforest is home to an estimated 390 billion trees and millions of species, many of which remain undocumented.",
+    questions: [
+      { q: "What is the Amazon Rainforest often called?", options: ["The heart of the Earth", "The world's lungs", "Nature's garden", "The oxygen tank"], answer: 1 },
+      { q: "How much of the world's oxygen is produced by the Amazon?", options: ["10%", "20%", "30%", "50%"], answer: 1 },
+      { q: "How many countries does the rainforest span?", options: ["5", "7", "9", "11"], answer: 2 },
+      { q: "How many trees are estimated in the Amazon?", options: ["100 billion", "390 billion", "1 trillion", "900 million"], answer: 1 },
+      { q: "What is unique about many Amazon species?", options: ["They're extinct", "They're imported", "They're undocumented", "They're aquatic"], answer: 2 }
+    ]
+  },
+  {
+    id: "B",
+    text: "The Great Wall of China is one of the most iconic structures in human history. Originally built to protect against invasions, it stretches over 13,000 miles. The Wall was constructed over centuries by different dynasties using local materials such as stone, wood, and bricks.",
+    questions: [
+      { q: "Why was the Great Wall originally built?", options: ["For trade", "As a monument", "For tourism", "For protection"], answer: 3 },
+      { q: "How long is the Great Wall?", options: ["1,300 miles", "5,000 miles", "13,000 miles", "15,000 miles"], answer: 2 },
+      { q: "Who built the Wall?", options: ["Modern China", "Single emperor", "Various dynasties", "Nomads"], answer: 2 },
+      { q: "What materials were used?", options: ["Glass", "Steel", "Concrete", "Local materials"], answer: 3 },
+      { q: "What is the Great Wall considered?", options: ["A wonder", "A prison", "A river", "A forest"], answer: 0 }
+    ]
+  },
+  {
+    id: "C",
+    text: "Photosynthesis is a process used by plants to convert light energy into chemical energy. This occurs mainly in the leaves, where chlorophyll captures sunlight. Carbon dioxide and water are converted into glucose and oxygen, sustaining plant life and producing oxygen for animals.",
+    questions: [
+      { q: "What do plants convert light energy into?", options: ["Oxygen", "Chlorophyll", "Chemical energy", "Sunlight"], answer: 2 },
+      { q: "Where does photosynthesis mainly occur?", options: ["Roots", "Leaves", "Stem", "Flowers"], answer: 1 },
+      { q: "What captures sunlight?", options: ["Glucose", "Chlorophyll", "Oxygen", "Water"], answer: 1 },
+      { q: "What gas do plants need for photosynthesis?", options: ["Nitrogen", "Hydrogen", "Carbon dioxide", "Oxygen"], answer: 2 },
+      { q: "What do plants release after photosynthesis?", options: ["Carbon", "Oxygen", "Nitrogen", "Chlorine"], answer: 1 }
+    ]
+  },
+  {
+    id: "D",
+    text: "Mount Everest is the Earth's highest mountain above sea level, located in the Himalayas. It rises 8,848 meters and attracts climbers worldwide. Reaching the summit is considered a great achievement, though the journey is dangerous due to altitude sickness, weather, and avalanches.",
+    questions: [
+      { q: "Where is Mount Everest located?", options: ["Andes", "Rockies", "Himalayas", "Alps"], answer: 2 },
+      { q: "How tall is Mount Everest?", options: ["7,500 m", "8,848 m", "9,200 m", "8,000 m"], answer: 1 },
+      { q: "Why do people climb Everest?", options: ["Fun", "Training", "Achievement", "Education"], answer: 2 },
+      { q: "What makes climbing Everest dangerous?", options: ["Lions", "Rivers", "Traffic", "Altitude & avalanches"], answer: 3 },
+      { q: "What is Everest known for?", options: ["Deepest point", "Highest mountain", "Widest base", "Most forests"], answer: 1 }
+    ]
+  }
+];
+
+const modeAssignments = {
+  "u1": ["light", "dark", "light", "dark"],
+  "u2": ["dark", "light", "dark", "light"],
+  "u3": ["light", "dark", "dark", "light"],
+  "u4": ["dark", "light", "light", "dark"],
+  "u5": ["light", "light", "dark", "dark"]
+};
+
+let currentPassage = 0;
+let startTime;
+const results = [];
+let userId = "";
+let userModes = [];
+
+function renderStart() {
+    document.getElementById("content").innerHTML = `
+    <h2>🧪 Reading Mode and Comprehension Study</h2>
+    <p>
+      Thank you for participating in this short research study. We are investigating how <strong>reading modes (dark vs. light)</strong> affect reading comprehension and memory.
+    </p>
+    <p>
+      You will be asked to:
+      <ul>
+        <li>Read 4 short passages (in either light or dark mode)</li>
+        <li>Answer 5 multiple-choice questions after each passage</li>
+        <li>Your reading time and answering time will be recorded</li>
+      </ul>
+    </p>
+    <p>
+      Please enter your assigned <strong>User ID (u1 to u5)</strong> below to begin.
+    </p>
+    <input type="text" id="userId" placeholder="u1, u2, ...">
+    <button onclick="startTest()">Start</button>
+  `;
+}
+
+function startTest() {
+  userId = document.getElementById("userId").value.trim();
+  if (!modeAssignments[userId]) {
+    alert("Invalid User ID. Use u1 to u5.");
+    return;
+  }
+  userModes = modeAssignments[userId];
+  renderPassage();
+}
+
+function renderPassage() {
+  const passage = passages[currentPassage];
+  const mode = userModes[currentPassage];
+  toggleMode(mode);
+  document.getElementById("content").innerHTML = `
+    <h2>Passage ${passage.id} (${mode.toUpperCase()} MODE)</h2>
+    <p>${passage.text}</p>
+    <button onclick="startQuestions()">Start Questions</button>
+  `;
+  startTime = Date.now();
+}
+
+function toggleMode(mode) {
+  document.body.classList.toggle("dark-mode", mode === "dark");
+}
+
+function startQuestions() {
+  const passage = passages[currentPassage];
+  const mode = userModes[currentPassage];
+  const readTime = Date.now() - startTime;
+  let html = "<form id='questionForm'>";
+  passage.questions.forEach((q, i) => {
+    html += `<p>${i + 1}. ${q.q}</p>`;
+    q.options.forEach((opt, idx) => {
+      html += `<label><input type='radio' name='q${i}' value='${idx}'> ${opt}</label><br>`;
+    });
+  });
+  html += `<button type='submit'>Submit</button></form>`;
+  document.getElementById("content").innerHTML = html;
+  startTime = Date.now();
+
+  document.getElementById("questionForm").onsubmit = (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+
+  // 🚨 Check for unanswered questions
+  for (let i = 0; i < passage.questions.length; i++) {
+    if (!formData.has(`q${i}`)) {
+      alert("⚠️ Please answer all questions before submitting.");
+      return;
+    }
+  }
+
+  let score = 0;
+  passage.questions.forEach((q, i) => {
+    if (parseInt(formData.get(`q${i}`)) === q.answer) score++;
+  });
+
+  results.push({
+    userId,
+    passage: passage.id,
+    mode,
+    readTime,
+    answerTime: Date.now() - startTime,
+    score
+  });
+
+  currentPassage++;
+  if (currentPassage < passages.length) renderPassage();
+  else exportCSV();
+};
+}
+
+function exportCSV() {
+  const headers = ["User ID", "Passage", "Mode", "Read Time (min)", "Answer Time (min)", "Score"];
+  const lines = results.map(r => {
+    const readTimeMin = (r.readTime / 60000).toFixed(2);
+    const answerTimeMin = (r.answerTime / 60000).toFixed(2);
+    return [r.userId, r.passage, r.mode, readTimeMin, answerTimeMin, r.score].join(",");
+  });
+  const csv = [headers.join(","), ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "results.csv";
+  link.click();
+
+  document.getElementById("content").style.display = "none";       // Hide main content
+  document.getElementById("thankYouMessage").style.display = "block"; // Show thank you
+}
+
+renderStart();
+</script>
+</body>
+</html>
