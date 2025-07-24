@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Reading Comprehension Test</title>
   <style>
     body {
@@ -35,6 +35,7 @@
       margin-top: 10px;
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -42,15 +43,15 @@
   <div id="thankYouMessage" style="display:none; max-width: 700px; margin-top: 20px; text-align: center; font-size: 16px;">
     <h2>✅ Thank You for Participating!</h2>
     <p>
-      You have completed the study. Your responses and timings have been saved in a Excel file downloaded to your device.
+      You have completed the study. Your responses and timings have been saved in a PDF file downloaded to your device.
     </p>
     <p>
       Please take a moment to share your experience by filling out our short feedback form:
     </p>
-    <a href="https://forms.cloud.microsoft/e/qwnBV5eJz4?origin=lprLink target=_blank" style="font-size: 18px; color: #0066cc;">
+    <a href="https://forms.cloud.microsoft/e/qwnBV5eJz4?origin=lprLink" target="_blank" style="font-size: 18px; color: #0066cc;">
       👉 Fill Out the Feedback Form
     </a>
-    <p><strong>Don't forget to attach your Excel file when submitting the form.</strong></p>
+    <p><strong>Don't forget to attach your PDF file when submitting the form.</strong></p>
   </div>
 </div>
 
@@ -102,6 +103,7 @@ const passages = [
   }
 ];
 
+
 const modeAssignments = {
   "u1": ["light", "dark", "light", "dark"],
   "u2": ["dark", "light", "dark", "light"],
@@ -119,21 +121,10 @@ let userModes = [];
 function renderStart() {
     document.getElementById("content").innerHTML = `
     <h2>🧪 Reading Mode and Comprehension Study</h2>
-    <p>
-      Thank you for participating in this short research study. We are investigating how <strong>reading modes (dark vs. light)</strong> affect reading comprehension and memory.
-    </p>
-    <p>
-      You will be asked to:
-      <ul>
-        <li>Read 4 short passages (in either light or dark mode)</li>
-        <li>Answer 5 multiple-choice questions after each passage</li>
-        <li>Your reading time and answering time will be recorded</li>
-      </ul>
-    </p>
-    <p>
-      Please enter your assigned <strong>User ID (u1 to u5)</strong> below to begin.
-    </p>
-    <input type="text" id="userId" placeholder="u1, u2, ...">
+    <p>Thank you for participating. We're studying how reading modes affect comprehension.</p>
+    <p>You'll read 4 passages and answer 5 questions after each.</p>
+    <p>Enter your assigned <strong>User ID (u1 to u5)</strong> below to begin.</p>
+    <input type="text" id="userId" placeholder="u1, u2, ..." />
     <button onclick="startTest()">Start</button>
   `;
 }
@@ -180,59 +171,59 @@ function startQuestions() {
   startTime = Date.now();
 
   document.getElementById("questionForm").onsubmit = (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-
-  // 🚨 Check for unanswered questions
-  for (let i = 0; i < passage.questions.length; i++) {
-    if (!formData.has(`q${i}`)) {
-      alert("⚠️ Please answer all questions before submitting.");
-      return;
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    for (let i = 0; i < passage.questions.length; i++) {
+      if (!formData.has(`q${i}`)) {
+        alert("⚠️ Please answer all questions before submitting.");
+        return;
+      }
     }
-  }
+    let score = 0;
+    passage.questions.forEach((q, i) => {
+      if (parseInt(formData.get(`q${i}`)) === q.answer) score++;
+    });
 
-  let score = 0;
-  passage.questions.forEach((q, i) => {
-    if (parseInt(formData.get(`q${i}`)) === q.answer) score++;
-  });
+    results.push({
+      userId,
+      passage: passage.id,
+      mode,
+      readTime,
+      answerTime: Date.now() - startTime,
+      score
+    });
 
-  results.push({
-    userId,
-    passage: passage.id,
-    mode,
-    readTime,
-    answerTime: Date.now() - startTime,
-    score
-  });
-
-  currentPassage++;
-  if (currentPassage < passages.length) renderPassage();
-  else exportXLSX();
-};
+    currentPassage++;
+    if (currentPassage < passages.length) renderPassage();
+    else exportPDF();
+  };
 }
 
-function exportXLSX() {
-  const user = results[0]?.userId || "unknown";
+async function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+  doc.setFontSize(14);
+  doc.text("Reading Comprehension Results", 20, y);
+  y += 10;
+  doc.setFontSize(12);
+  doc.text("User ID | Passage | Mode | Read Time (min) | Answer Time (min) | Score", 10, y);
+  y += 10;
 
-  const worksheetData = [
-    [`Participant User ID: ${user}`], // <- Top header row
-    [],                               // <- Empty row for spacing
-    ["User ID", "Passage", "Mode", "Read Time (min)", "Answer Time (min)", "Score"], // Headers
-    ...results.map(r => [
-      r.userId,
-      r.passage,
-      r.mode,
-      (r.readTime / 60000).toFixed(2),
-      (r.answerTime / 60000).toFixed(2),
-      r.score
-    ])
-  ];
+  results.forEach(r => {
+    const readTimeMin = (r.readTime / 60000).toFixed(2);
+    const answerTimeMin = (r.answerTime / 60000).toFixed(2);
+    const row = [r.userId, r.passage, r.mode, readTimeMin, answerTimeMin, r.score].join(" | ");
+    doc.text(row, 10, y);
+    y += 10;
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+    }
+  });
 
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Results");
-
-  XLSX.writeFile(workbook, "results_${user}.xlsx");
+  const fileName = `${results[0].userId}_results.pdf`;
+  doc.save(fileName);
 
   document.getElementById("content").style.display = "none";
   document.getElementById("thankYouMessage").style.display = "block";
