@@ -207,26 +207,35 @@ function startQuestions() {
 
   currentPassage++;
   if (currentPassage < passages.length) renderPassage();
-  else exportCSV();
+  else exportXLSX();
 };
 }
 
-function exportCSV() {
-  const headers = ["User ID", "Passage", "Mode", "Read Time (min)", "Answer Time (min)", "Score"];
-  const lines = results.map(r => {
-    const readTimeMin = (r.readTime / 60000).toFixed(2);
-    const answerTimeMin = (r.answerTime / 60000).toFixed(2);
-    return [r.userId, r.passage, r.mode, readTimeMin, answerTimeMin, r.score].join(",");
-  });
-  const csv = [headers.join(","), ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "results.csv";
-  link.click();
+function exportXLSX() {
+  const user = results[0]?.userId || "unknown";
 
-  document.getElementById("content").style.display = "none";       // Hide main content
-  document.getElementById("thankYouMessage").style.display = "block"; // Show thank you
+  const worksheetData = [
+    [`Participant User ID: ${user}`], // <- Top header row
+    [],                               // <- Empty row for spacing
+    ["User ID", "Passage", "Mode", "Read Time (min)", "Answer Time (min)", "Score"], // Headers
+    ...results.map(r => [
+      r.userId,
+      r.passage,
+      r.mode,
+      (r.readTime / 60000).toFixed(2),
+      (r.answerTime / 60000).toFixed(2),
+      r.score
+    ])
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Results");
+
+  XLSX.writeFile(workbook, "results_${user}.xlsx");
+
+  document.getElementById("content").style.display = "none";
+  document.getElementById("thankYouMessage").style.display = "block";
 }
 
 renderStart();
